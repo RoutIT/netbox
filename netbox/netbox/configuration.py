@@ -11,7 +11,9 @@ import os
 # access to the server via any other hostnames. The first FQDN in the list will be treated as the preferred name.
 #
 # Example: ALLOWED_HOSTS = ['netbox.example.com', 'netbox.internal.local']
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    os.environ['ALLOWED_HOST']
+]
 
 # This key is used for secure generation of random numbers and strings. It must never be exposed outside of this file.
 # For optimal security, SECRET_KEY should be at least 50 characters in length and contain a mix of letters, numbers, and
