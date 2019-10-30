@@ -12,6 +12,9 @@ import os
 #
 # Example: ALLOWED_HOSTS = ['netbox.example.com', 'netbox.internal.local']
 ALLOWED_HOSTS = [
+    '127.0.0.1',
+    'localhost'
+    '::1',
     os.environ['ALLOWED_HOST']
 ]
 
