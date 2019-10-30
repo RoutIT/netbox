@@ -24,7 +24,7 @@ SECRET_KEY = os.environ['SECRET_KEY']
 # Set to True to enable server debugging. WARNING: Debugging introduces a substantial performance penalty and may reveal
 # sensitive information about your installation. Only enable debugging while performing testing. Never enable debugging
 # on a production system.
-DEBUG = os.environ['DEBUG']
+DEBUG = os.environ['NETBOX_DEBUG']
 
 # PostgreSQL database configuration.
 DATABASE = {
