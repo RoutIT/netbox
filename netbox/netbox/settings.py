@@ -247,7 +247,7 @@ USE_X_FORWARDED_HOST = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_ROOT = BASE_DIR + '/static'
-STATIC_URL = '/{}static/'.format(BASE_PATH)
+STATIC_URL = os.environ['STATIC_URL']
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, "project-static"),
 )
