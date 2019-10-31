@@ -80,7 +80,7 @@ CHANGELOG_RETENTION = 90
 # API Cross-Origin Resource Sharing (CORS) settings. If CORS_ORIGIN_ALLOW_ALL is set to True, all origins will be
 # allowed. Otherwise, define a list of allowed origins using either CORS_ORIGIN_WHITELIST or
 # CORS_ORIGIN_REGEX_WHITELIST. For more information, see https://github.com/ottoyiu/django-cors-headers
-CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_ALLOW_ALL = os.environ['CORS_ORIGIN_ALLOW_ALL']
 CORS_ORIGIN_WHITELIST = [
     # 'https://hostname.example.com',
 ]
