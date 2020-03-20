@@ -36,14 +36,31 @@ DATABASE = {
 }
 
 # Redis database settings. The Redis database is used for caching and background processing such as webhooks
+# Seperate sections for webhooks and caching allow for connecting to seperate Redis instances/datbases if desired.
+# Full connection details are required in both sections, even if they are the same.
 REDIS = {
-    'HOST': os.environ['REDIS_HOST'],
-    'PORT': os.environ['REDIS_PORT'],
-    'PASSWORD': os.environ['REDIS_PASSWORD'],
-    'DATABASE': 0,
-    'CACHE_DATABASE': 1,
-    'DEFAULT_TIMEOUT': os.environ['REDIS_TIMEOUT'],
-    'SSL': os.environ['REDIS_SSL'],
+    'webhooks': {
+        'HOST': os.environ['REDIS_HOST'],
+        'PORT': os.environ['REDIS_PORT'],
+        # Comment out `HOST` and `PORT` lines and uncomment the following if using Redis Sentinel
+        # 'SENTINELS': [('mysentinel.redis.example.com', 6379)],
+        # 'SENTINEL_SERVICE': 'netbox',
+        'PASSWORD': os.environ['REDIS_PASSWORD'],
+        'DATABASE': 0,
+        'DEFAULT_TIMEOUT': 1,
+        'SSL': os.environ['REDIS_SSL'],
+    },
+    'caching': {
+        'HOST': os.environ['REDIS_HOST'],
+        'PORT': os.environ['REDIS_PORT'],
+        # Comment out `HOST` and `PORT` lines and uncomment the following if using Redis Sentinel
+        # 'SENTINELS': [('mysentinel.redis.example.com', 6379)],
+        # 'SENTINEL_SERVICE': 'netbox',
+        'PASSWORD': os.environ['REDIS_PASSWORD'],
+        'DATABASE': 0,
+        'DEFAULT_TIMEOUT': 1,
+        'SSL': os.environ['REDIS_SSL'],
+    }
 }
 
 
