@@ -4,16 +4,32 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from netaddr.core import AddrFormatError
 
-from dcim.models import Site, Device, Interface
-from extras.filters import CustomFieldFilterSet
-from tenancy.filtersets import TenancyFilterSet
-from utilities.filters import NameSlugSearchFilterSet, NumericInFilter, TagFilter
+from dcim.models import Device, Interface, Region, Site
+from extras.filters import CustomFieldFilterSet, CreatedUpdatedFilterSet
+from tenancy.filters import TenancyFilterSet
+from utilities.filters import (
+    BaseFilterSet, MultiValueCharFilter, MultiValueNumberFilter, NameSlugSearchFilterSet,
+    NumericInFilter, TagFilter, TreeNodeMultipleChoiceFilter,
+)
 from virtualization.models import VirtualMachine
-from .constants import *
+from .choices import *
 from .models import Aggregate, IPAddress, Prefix, RIR, Role, Service, VLAN, VLANGroup, VRF
 
 
-class VRFFilter(TenancyFilterSet, CustomFieldFilterSet):
+__all__ = (
+    'AggregateFilterSet',
+    'IPAddressFilterSet',
+    'PrefixFilterSet',
+    'RIRFilterSet',
+    'RoleFilterSet',
+    'ServiceFilterSet',
+    'VLANFilterSet',
+    'VLANGroupFilterSet',
+    'VRFFilterSet',
+)
+
+
+class VRFFilterSet(BaseFilterSet, TenancyFilterSet, CustomFieldFilterSet, CreatedUpdatedFilterSet):
     id__in = NumericInFilter(
         field_name='id',
         lookup_expr='in'
@@ -38,7 +54,7 @@ class VRFFilter(TenancyFilterSet, CustomFieldFilterSet):
         fields = ['name', 'rd', 'enforce_unique']
 
 
-class RIRFilter(NameSlugSearchFilterSet):
+class RIRFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
     id__in = NumericInFilter(
         field_name='id',
         lookup_expr='in'
@@ -49,7 +65,7 @@ class RIRFilter(NameSlugSearchFilterSet):
         fields = ['name', 'slug', 'is_private']
 
 
-class AggregateFilter(CustomFieldFilterSet):
+class AggregateFilterSet(BaseFilterSet, CustomFieldFilterSet, CreatedUpdatedFilterSet):
     id__in = NumericInFilter(
         field_name='id',
         lookup_expr='in'
@@ -95,11 +111,11 @@ class AggregateFilter(CustomFieldFilterSet):
         try:
             query = str(netaddr.IPNetwork(value).cidr)
             return queryset.filter(prefix=query)
-        except ValidationError:
+        except (AddrFormatError, ValueError):
             return queryset.none()
 
 
-class RoleFilter(NameSlugSearchFilterSet):
+class RoleFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
     q = django_filters.CharFilter(
         method='search',
         label='Search',
@@ -110,7 +126,7 @@ class RoleFilter(NameSlugSearchFilterSet):
         fields = ['id', 'name', 'slug']
 
 
-class PrefixFilter(TenancyFilterSet, CustomFieldFilterSet):
+class PrefixFilterSet(BaseFilterSet, TenancyFilterSet, CustomFieldFilterSet, CreatedUpdatedFilterSet):
     id__in = NumericInFilter(
         field_name='id',
         lookup_expr='in'
@@ -149,6 +165,19 @@ class PrefixFilter(TenancyFilterSet, CustomFieldFilterSet):
         to_field_name='rd',
         label='VRF (RD)',
     )
+    region_id = TreeNodeMultipleChoiceFilter(
+        queryset=Region.objects.all(),
+        field_name='site__region',
+        lookup_expr='in',
+        label='Region (ID)',
+    )
+    region = TreeNodeMultipleChoiceFilter(
+        queryset=Region.objects.all(),
+        field_name='site__region',
+        lookup_expr='in',
+        to_field_name='slug',
+        label='Region (slug)',
+    )
     site_id = django_filters.ModelMultipleChoiceFilter(
         queryset=Site.objects.all(),
         label='Site (ID)',
@@ -178,7 +207,7 @@ class PrefixFilter(TenancyFilterSet, CustomFieldFilterSet):
         label='Role (slug)',
     )
     status = django_filters.MultipleChoiceFilter(
-        choices=PREFIX_STATUS_CHOICES,
+        choices=PrefixStatusChoices,
         null_value=None
     )
     tag = TagFilter()
@@ -204,7 +233,7 @@ class PrefixFilter(TenancyFilterSet, CustomFieldFilterSet):
         try:
             query = str(netaddr.IPNetwork(value).cidr)
             return queryset.filter(prefix=query)
-        except ValidationError:
+        except (AddrFormatError, ValueError):
             return queryset.none()
 
     def search_within(self, queryset, name, value):
@@ -247,7 +276,7 @@ class PrefixFilter(TenancyFilterSet, CustomFieldFilterSet):
         return queryset.filter(prefix__net_mask_length=value)
 
 
-class IPAddressFilter(TenancyFilterSet, CustomFieldFilterSet):
+class IPAddressFilterSet(BaseFilterSet, TenancyFilterSet, CustomFieldFilterSet, CreatedUpdatedFilterSet):
     id__in = NumericInFilter(
         field_name='id',
         lookup_expr='in'
@@ -260,7 +289,7 @@ class IPAddressFilter(TenancyFilterSet, CustomFieldFilterSet):
         method='search_by_parent',
         label='Parent prefix',
     )
-    address = django_filters.CharFilter(
+    address = MultiValueCharFilter(
         method='filter_address',
         label='Address',
     )
@@ -278,12 +307,12 @@ class IPAddressFilter(TenancyFilterSet, CustomFieldFilterSet):
         to_field_name='rd',
         label='VRF (RD)',
     )
-    device = django_filters.CharFilter(
+    device = MultiValueCharFilter(
         method='filter_device',
         field_name='name',
-        label='Device',
+        label='Device (name)',
     )
-    device_id = django_filters.NumberFilter(
+    device_id = MultiValueNumberFilter(
         method='filter_device',
         field_name='pk',
         label='Device (ID)',
@@ -309,12 +338,16 @@ class IPAddressFilter(TenancyFilterSet, CustomFieldFilterSet):
         queryset=Interface.objects.all(),
         label='Interface (ID)',
     )
+    assigned_to_interface = django_filters.BooleanFilter(
+        method='_assigned_to_interface',
+        label='Is assigned to an interface',
+    )
     status = django_filters.MultipleChoiceFilter(
-        choices=IPADDRESS_STATUS_CHOICES,
+        choices=IPAddressStatusChoices,
         null_value=None
     )
     role = django_filters.MultipleChoiceFilter(
-        choices=IPADDRESS_ROLE_CHOICES
+        choices=IPAddressRoleChoices
     )
     tag = TagFilter()
 
@@ -343,13 +376,8 @@ class IPAddressFilter(TenancyFilterSet, CustomFieldFilterSet):
             return queryset.none()
 
     def filter_address(self, queryset, name, value):
-        if not value.strip():
-            return queryset
         try:
-            # Match address and subnet mask
-            if '/' in value:
-                return queryset.filter(address=value)
-            return queryset.filter(address__net_host=value)
+            return queryset.filter(address__net_in=value)
         except ValidationError:
             return queryset.none()
 
@@ -360,14 +388,32 @@ class IPAddressFilter(TenancyFilterSet, CustomFieldFilterSet):
 
     def filter_device(self, queryset, name, value):
         try:
-            device = Device.objects.prefetch_related('device_type').get(**{name: value})
-            vc_interface_ids = [i['id'] for i in device.vc_interfaces.values('id')]
+            devices = Device.objects.prefetch_related('device_type').filter(**{'{}__in'.format(name): value})
+            vc_interface_ids = []
+            for device in devices:
+                vc_interface_ids.extend([i['id'] for i in device.vc_interfaces.values('id')])
             return queryset.filter(interface_id__in=vc_interface_ids)
         except Device.DoesNotExist:
             return queryset.none()
 
+    def _assigned_to_interface(self, queryset, name, value):
+        return queryset.exclude(interface__isnull=value)
 
-class VLANGroupFilter(NameSlugSearchFilterSet):
+
+class VLANGroupFilterSet(BaseFilterSet, NameSlugSearchFilterSet):
+    region_id = TreeNodeMultipleChoiceFilter(
+        queryset=Region.objects.all(),
+        field_name='site__region',
+        lookup_expr='in',
+        label='Region (ID)',
+    )
+    region = TreeNodeMultipleChoiceFilter(
+        queryset=Region.objects.all(),
+        field_name='site__region',
+        lookup_expr='in',
+        to_field_name='slug',
+        label='Region (slug)',
+    )
     site_id = django_filters.ModelMultipleChoiceFilter(
         queryset=Site.objects.all(),
         label='Site (ID)',
@@ -384,7 +430,7 @@ class VLANGroupFilter(NameSlugSearchFilterSet):
         fields = ['id', 'name', 'slug']
 
 
-class VLANFilter(TenancyFilterSet, CustomFieldFilterSet):
+class VLANFilterSet(BaseFilterSet, TenancyFilterSet, CustomFieldFilterSet, CreatedUpdatedFilterSet):
     id__in = NumericInFilter(
         field_name='id',
         lookup_expr='in'
@@ -392,6 +438,19 @@ class VLANFilter(TenancyFilterSet, CustomFieldFilterSet):
     q = django_filters.CharFilter(
         method='search',
         label='Search',
+    )
+    region_id = TreeNodeMultipleChoiceFilter(
+        queryset=Region.objects.all(),
+        field_name='site__region',
+        lookup_expr='in',
+        label='Region (ID)',
+    )
+    region = TreeNodeMultipleChoiceFilter(
+        queryset=Region.objects.all(),
+        field_name='site__region',
+        lookup_expr='in',
+        to_field_name='slug',
+        label='Region (slug)',
     )
     site_id = django_filters.ModelMultipleChoiceFilter(
         queryset=Site.objects.all(),
@@ -424,7 +483,7 @@ class VLANFilter(TenancyFilterSet, CustomFieldFilterSet):
         label='Role (slug)',
     )
     status = django_filters.MultipleChoiceFilter(
-        choices=VLAN_STATUS_CHOICES,
+        choices=VLANStatusChoices,
         null_value=None
     )
     tag = TagFilter()
@@ -444,7 +503,7 @@ class VLANFilter(TenancyFilterSet, CustomFieldFilterSet):
         return queryset.filter(qs_filter)
 
 
-class ServiceFilter(django_filters.FilterSet):
+class ServiceFilterSet(BaseFilterSet, CreatedUpdatedFilterSet):
     q = django_filters.CharFilter(
         method='search',
         label='Search',

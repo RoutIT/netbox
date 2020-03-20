@@ -44,7 +44,7 @@
         </li>
         {% if perms.extras.view_objectchange %}
             <li role="presentation"{% if active_tab == 'changelog' %} class="active"{% endif %}>
-                <a href="{% url 'extras:tag_changelog' slug=tag.slug %}">Changelog</a>
+                <a href="{% url 'extras:tag_changelog' slug=tag.slug %}">Change Log</a>
             </li>
         {% endif %}
     </ul>
@@ -90,7 +90,7 @@
                 </div>
                 <div class="panel-body rendered-markdown">
                     {% if tag.comments %}
-                        {{ tag.comments|gfm }}
+                        {{ tag.comments|render_markdown }}
                     {% else %}
                         <span class="text-muted">None</span>
                     {% endif %}
